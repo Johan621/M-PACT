@@ -18,26 +18,27 @@ export default function App() {
       order_id: checkoutData.order_id,
       handler: async function (response) {
         try {
-          // Send cryptographic signature to the backend endpoint already in server.js
+          // 1. Verify the signature on the backend
           const verifyRes = await axios.post("http://localhost:5000/api/payments/verify", {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature
           });
 
-          if (verifyRes.data.status === "verified") {
+          if (verifyRes.data.status === "verified" || verifyRes.data.payment_status === "verified") {
+            // 2. Push an explicit success message to the chat state
             setMessages(prev => [
               ...prev,
               { 
                 role: "agent", 
-                text: `🎉 Order Confirmed & Cryptographically Verified!\nPayment ID: ${response.razorpay_payment_id}\nOrder ID: ${response.razorpay_order_id}` 
+                text: `✅ Payment verified successfully by backend!\n- **Order ID:** ${response.razorpay_order_id}\n- **Payment ID:** ${response.razorpay_payment_id}\n- **Status:** Completed & Secured 🎉` 
               }
             ]);
           }
         } catch (err) {
           setMessages(prev => [
             ...prev,
-            { role: "agent", text: "❌ Server signature verification failed." }
+            { role: "agent", text: "❌ Payment verification failed on the server." }
           ]);
         }
       },
