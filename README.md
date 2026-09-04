@@ -1,22 +1,31 @@
 # M-PACT: AI Agentic Commerce
 
-M-PACT makes any merchant understandable, negotiable, and transactable by an AI buyer end-to-end. Built for Track 01 of the Razorpay Buildathon.
+M-PACT is an autonomous AI commerce agent built for Track 01 of the Razorpay Buildathon. It transforms a standard merchant catalog into a conversational, transactable experience where buyers can discover products, negotiate prices naturally, and securely check out.
 
-**Core Architecture:**
-* **Frontend:** React (`App.jsx`) with centralized session management.
-* **Backend:** Node/Express (`server.js`) featuring a deterministic policy engine.
-* **AI:** Google Gemini 1.5 Flash (via OpenRouter) / Llama 3.1.
-* **Payments:** Razorpay Test Mode with server-side HMAC-SHA256 verification.
+Crucially, M-PACT does not blindly trust the LLM. It relies on a deterministic backend policy engine to strictly bound AI pricing power and cryptographically verify all payments.
 
-**How to Run Locally:**
+### System Architecture
+* **Frontend:** React (Vite) with centralized, persistent session management.
+* **Backend:** Node.js & Express API routing.
+* **AI Layer:** Llama 3.1 / Gemini 1.5 Flash strictly mapped to JSON tool calls.
+* **Payment Gateway:** Razorpay Test API with server-side HMAC-SHA256 signature verification.
+
+### Core Features
+* **Semantic Catalog Discovery:** The agent parses natural language intent to query and return specific merchant inventory in real-time.
+* **Deterministic Negotiation Guardrails:** Users can counteroffer, but the backend policy engine intercepts all requests, strictly capping discounts at 10% to protect merchant margins. AI hallucinations cannot bypass this check.
+* **Cryptographically Secured Checkout:** Payments are not trusted via client-side success screens. The backend generates a secure Razorpay Order ID and verifies the `razorpay_signature` post-payment to prevent client-side spoofing.
+* **Deterministic Fallback Execution:** If the LLM suffers from context amnesia and fails to call the checkout tool, a backend auto-injector detects acceptance intents and forcefully binds the active session's offer ID to the checkout creator to prevent the flow from breaking.
+
+### How to Run Locally
 1. Clone the repository.
-2. In `/backend`, copy `.env.example` to `.env` and add your keys:
+2. In `/backend`, duplicate `.env.example` to `.env` and configure:
    `OPENAI_API_KEY=your_key`
-   `RAZORPAY_KEY_ID=rzp_test_...`
+   `RAZORPAY_KEY_ID=rzp_test_your_key`
    `RAZORPAY_KEY_SECRET=your_secret`
-3. Run `npm install` and `npm start` in the backend.
-4. Run `npm install` and `npm run dev` in the `/frontend` directory.
+3. Start Backend: `cd backend && npm install && npm start`
+4. Start Frontend: `cd frontend && npm install && npm run dev`
 
-**What Broke at 2 AM & How We Escaped:**
-1. **Context Amnesia:** The LLM kept forgetting the `offer_id` required to trigger the checkout tool. *Fix:* We bypassed the LLM's weak memory by implementing a deterministic auto-injector in the backend that catches the word "accept" and forcefully binds the active session's offer ID to the Razorpay checkout creator.
-2. **The OFFER_SESSION_MISMATCH:** The AI frontend was generating a new `session_id` every message, causing the policy engine to reject valid offers because it thought a different buyer was trying to claim them. *Fix:* We unified the payload to send both `sessionId` and `session_id`, and forced React to persist a single `useRef` session string across the entire component lifecycle.
+### The Biggest Engineering Challenge
+Our toughest hurdle was an `OFFER_SESSION_MISMATCH` rejection occurring right at the point of checkout. The React frontend was inadvertently generating a new session ID on every single chat message re-render. The backend policy engine correctly blocked the checkout because it perceived a completely different buyer attempting to claim an active offer. 
+
+We resolved this by unifying the payload keys across Express and React, and utilizing React's `useRef` hook to persist a single, immutable session string across the entire component lifecycle.
