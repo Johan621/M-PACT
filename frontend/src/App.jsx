@@ -7,6 +7,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   
   const sessionId = useRef('sess_' + Math.random().toString(36).substring(2, 9)).current;
+  const API_URL = "https://m-pact.onrender.com";
 
   const handlePayment = (checkoutData) => {
     const options = {
@@ -18,15 +19,13 @@ export default function App() {
       order_id: checkoutData.order_id,
       handler: async function (response) {
         try {
-          // 1. Verify the signature on the backend
-          const verifyRes = await axios.post("http://localhost:5000/api/payments/verify", {
+          const verifyRes = await axios.post(`${API_URL}/api/payments/verify`, {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature
           });
 
           if (verifyRes.data.status === "verified" || verifyRes.data.payment_status === "verified") {
-            // 2. Push an explicit success message to the chat state
             setMessages(prev => [
               ...prev,
               { 
@@ -58,7 +57,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const res = await axios.post('https://m-pact.onrender.com', { 
+      const res = await axios.post(`${API_URL}/api/agent/chat`, { 
         message: userMsg,
         sessionId: sessionId,
         session_id: sessionId 
